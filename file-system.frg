@@ -1,4 +1,4 @@
-#lang forge
+#lang forge/froglet
 
 abstract sig FsObj {}
 sig File extends FsObj {}
