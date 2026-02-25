@@ -37,9 +37,7 @@ For example, invoking `rm f; rm f` is invalid (file `f` is deleted twice), while
 The model uses a `State` signature with relations for object liveness (`live`), hierarchy (`parent`), root directory (`root`), and trace progression (`next`).
 
 The `trace` enforces a linear history.
-It starts from `init`,
-each transition satisfies `step`, and
-there are no cycles in `next`
+It starts from `init`, each transition satisfies `step`, and there are no cycles in `next`.
 `step` is a choice among command predicates: `touch`, `mkdir`, `rm`, `rmr`, `mv`, and `cp`.
 
 We developed a custom visualization for Sterling.
@@ -51,15 +49,15 @@ The `FsObj` type describes the abstract file-system object type; `File` and `Dir
 A `State` represents one snapshot of the system.
 The `isLive`/`isDead` predicates describe whether an object can exist or not across states.
 The `wellformed` predicate encodes our core invariants: live root, root has no parent, every live non-root object has a live parent, no parent cycles, and that the root directory is reachable from every live object.
-We also developed six transition predicates define command preconditions and postconditions which specify how a command invocation would affect the filesystem topology across two consecutive (`pre` and `post`) states. 
+We also developed six transition predicates that define command preconditions and postconditions, which specify how a command invocation would affect the filesystem topology across two consecutive (`pre` and `post`) states.
 
 ## Testing
 The model is tested with five test instances:
-1.`fileSystemTests`: baseline sat/unsat sanity checks for structure
-2.`transitionTests`: command precondition and transition validity
-3.`propertyTests`: preservation and trace-level invariant checks
-4.`traceUnsat`: behavior that must be impossible, i.e., a buggy command composition
-5.`traceSat`: behavior that must be possible, i.e., a valid command composition
+1. `fileSystemTests`: baseline sat/unsat sanity checks for structure
+2. `transitionTests`: command precondition and transition validity
+3. `propertyTests`: preservation and trace-level invariant checks
+4. `traceUnsat`: behavior that must be impossible, i.e., a buggy command composition
+5. `traceSat`: behavior that must be possible, i.e., a valid command composition
 
 ## Documentation
 The Forge file includes comments for invariants, transitions, and test groups.  
