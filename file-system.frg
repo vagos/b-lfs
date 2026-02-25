@@ -368,3 +368,53 @@ test expect traceUnsat {
         }
     } for 6 State is unsat
 }
+
+test expect traceSat {
+    -- touch a file then rm it
+    touchThenRmSat: {
+        trace
+        some s1, s2, s3: State, f: File, d: Dir | {
+            s2 = s1.next
+            s3 = s2.next
+            touch[s1, s2, f, d]
+            rm[s2, s3, f]
+        }
+    } for 6 State is sat
+
+    -- mkdir then touch a file inside it then mv the file
+    mkdirTouchMvSat: {
+        trace
+        some s1, s2, s3, s4: State, d: Dir, p: Dir, f: File | {
+            s2 = s1.next
+            s3 = s2.next
+            s4 = s3.next
+            mkdir[s1, s2, d, p]
+            touch[s2, s3, f, d]
+            mv[s3, s4, f, p]
+        }
+    } for 6 State is sat
+
+    -- mkdir then rmr
+    mkdirThenRmrSat: {
+        trace
+        some s1, s2, s3, s4: State, d1: Dir, d2: Dir, p: Dir | {
+            s2 = s1.next
+            s3 = s2.next
+            s4 = s3.next
+            mkdir[s1, s2, d1, p]
+            mkdir[s2, s3, d2, d1]
+            rmr[s3, s4, d1]
+        }
+    } for 6 State is sat
+
+    -- touch a file then cp it
+    touchThenCpSat: {
+        trace
+        some s1, s2, s3: State, f: File, dest: File, d: Dir | {
+            s2 = s1.next
+            s3 = s2.next
+            touch[s1, s2, f, d]
+            cp[s2, s3, f, dest, d]
+        }
+    } for 6 State is sat
+}
