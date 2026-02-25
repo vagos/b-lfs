@@ -1,4 +1,5 @@
 #lang forge/froglet
+option run_sterling "vis.js"
 
 abstract sig FsObj {}
 sig File extends FsObj {}
