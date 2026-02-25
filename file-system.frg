@@ -303,21 +303,68 @@ test expect propertyTests {
 
     wellformedIsAnInvariantCheck:
         { wellformedIsAnInvariant }
-        for exactly 6 State is checked
+        for 6 State is checked
 
     rootIsForeverCheck:
         { rootIsForever }
-        for exactly 6 State is checked
+        for 6 State is checked
 
     rootAlwaysLiveCheck:
         { rootAlwaysLive }
-        for exactly 6 State is checked
+        for 6 State is checked
 
     noOtherCreationCheck:
         { noOtherCreation }
-        for exactly 6 State is checked
+        for 6 State is checked
 
     noOtherDeathCheck:
         { noOtherDeath }
-        for exactly 6 State is checked
+        for 6 State is checked
+}
+
+-- traces that should be impossible
+test expect traceUnsat {
+    -- cannot rmr the same directory twice
+    rmrTwiceUnsat: {
+        trace
+        some s1, s2, s3: State, d: Dir | {
+            s2 = s1.next
+            s3 = s2.next
+            rmr[s1, s2, d]
+            rmr[s2, s3, d]
+        }
+    } for 6 State is unsat
+
+    -- cannot mv a file after rm it
+    rmThenMvUnsat: {
+        trace
+        some s1, s2, s3: State, f: File, d: Dir | {
+            s2 = s1.next
+            s3 = s2.next
+            rm[s1, s2, f]
+            mv[s2, s3, f, d]
+        }
+    } for 6 State is unsat
+
+    -- cannot cp from a file after rm it
+    rmThenCpUnsat: {
+        trace
+        some s1, s2, s3: State, f: File, dest: File, d: Dir | {
+            s2 = s1.next
+            s3 = s2.next
+            rm[s1, s2, f]
+            cp[s2, s3, f, dest, d]
+        }
+    } for 6 State is unsat
+
+    -- cannot mv into a dead directory
+    mvToDeadDirUnsat: {
+        trace
+        some s1, s2, s3: State, d1: Dir, d2: Dir | {
+            s2 = s1.next
+            s3 = s2.next
+            rmr[s1, s2, d1]
+            mv[s2, s3, d2, d1]
+        }
+    } for 6 State is unsat
 }
