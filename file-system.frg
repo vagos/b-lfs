@@ -217,23 +217,6 @@ test expect transitionTests {
     mvRootUnsat: { some pre, post: State, d: Dir | wellformed[pre] and mv[pre, post, pre.root, d] } is unsat
 }
 
-pred wellformedIsAnInvariant {
-    trace implies {
-        all s: State | wellformed[s]
-    }
-}
-
-pred rootIsForever {
-    trace implies {
-        all s1, s2: State | s1.root = s2.root
-    }
-}
-
-pred rootAlwaysLive {
-    trace implies {
-        all s: State | isLive[s, s.root]
-    }
-}
 
 pred touchPreserves {
     all pre, post: State, f: File, d: Dir |
@@ -301,18 +284,6 @@ test expect propertyTests {
     rmrPreservesCheck: { rmrPreserves } is checked
     mvPreservesCheck: { mvPreserves } is checked
     cpPreservesCheck: { cpPreserves } is checked
-
-    wellformedIsAnInvariantCheck:
-        { wellformedIsAnInvariant }
-        for 6 State is checked
-
-    rootIsForeverCheck:
-        { rootIsForever }
-        for 6 State is checked
-
-    rootAlwaysLiveCheck:
-        { rootAlwaysLive }
-        for 6 State is checked
 
     noOtherCreationCheck:
         { noOtherCreation }
@@ -419,3 +390,24 @@ test expect traceSat {
         }
     } for 6 State is sat
 }
+
+-- every state on the trace is well-formed
+pred wellformedIsAnInvariant {
+    all s: State | wellformed[s]
+}
+
+-- the root never changes across states
+pred rootIsForever {
+    all s1, s2: State | s1.root = s2.root
+}
+
+-- the root is always live
+pred rootAlwaysLive {
+    all s: State | isLive[s, s.root]
+}
+
+wellformedIsAnInvariantAssertion: assert trace is sufficient for wellformedIsAnInvariant
+
+rootIsForeverAssertion: assert trace is sufficient for rootIsForever
+
+rootAlwaysLiveAssertion: assert trace is sufficient for rootAlwaysLive

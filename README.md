@@ -52,12 +52,17 @@ The `wellformed` predicate encodes our core invariants: live root, root has no p
 We also developed six transition predicates that define command preconditions and postconditions, which specify how a command invocation would affect the filesystem topology across two consecutive (`pre` and `post`) states.
 
 ## Testing
-The model is tested with five test instances:
+The model is tested with 5 test-expect blocks and 3 assertions:
 1. `fileSystemTests`: baseline sat/unsat sanity checks for structure
 2. `transitionTests`: command precondition and transition validity
-3. `propertyTests`: preservation and trace-level invariant checks
+3. `propertyTests`: property checks of transitions
 4. `traceUnsat`: behavior that must be impossible, i.e., a buggy command composition
-5. `traceSat`: behavior that must be possible, i.e., a valid command composition
+5. `traceSat`: behavior that is possible, i.e., a valid command composition
+
+Additionally, three trace-level invariants are verified as assertions:
+- Every state on the trace is well-formed
+- The root directory never changes across states
+- The root directory is always live
 
 ## Documentation
 The Forge file includes comments for invariants, transitions, and test groups.  
