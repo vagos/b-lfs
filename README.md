@@ -3,21 +3,13 @@
 ## Overview
 This project studies a simplified UNIX-style file system in Forge. The current runnable artifact models the file-system tree and several commands as state transitions; the next extension is to add named paths, including nonlinear path components such as `.` and `..`.
 
-The repository currently contains:
-
-- a working baseline model in `midterm/file-system.frg`
-- a custom Sterling visualization in `midterm/vis.js`
-- a design sketch for the path-resolution extension captured in the original project notes
-
-The main question driving the final version is whether command behavior stays correct once paths are resolved and normalized rather than treated as direct object references.
-
 ## Goals
-Our goal is not just to recreate a file system, but to use modeling to expose edge cases in path-based command semantics.
+Our goal is to use modeling to expose edge cases in path-based command semantics.
 
 ### Foundation
-The basic model we are confident we can complete is a rooted file-system tree with files, directories, liveness, parent pointers, and command transitions for `touch`, `mkdir`, `rm`, `rmr`, `mv`, and `cp`.
+The basic model is a rooted file-system tree with files, directories, liveness, parent pointers, and command transitions for `touch`, `mkdir`, `rm`, `rmr`, `mv`, and `cp`.
 
-Three-bucket scope at this level:
+Scope at this level:
 
 - Core: rooted tree structure, live/dead objects, trace-based command execution, structural invariants, and tests for command preconditions and postconditions
 - Closely related: small trace exploration and custom visualization of state changes
@@ -28,7 +20,7 @@ The intended outcome at this level is a stable Forge model with tests showing th
 ### Target
 The project we plan to hand in extends the baseline model with names and explicit path objects. Commands should resolve paths relative to a base directory rather than operating on objects directly.
 
-Three-bucket scope at this level:
+Scope at this level:
 
 - Core: named children, path components, path resolution, normalization, and path-based versions of the filesystem commands
 - Closely related: equivalence or mismatch tests comparing raw-path behavior with normalized-path behavior on edge cases such as `a/b/..`
@@ -113,25 +105,6 @@ The main motivating edge case is:
 After normalization, this path should behave like `rmr a/.`, so both should delete the same directory. If recursive removal is instead modeled by walking the raw path while mutation is already in progress, deleting `b` too early can make `a/b/..` stop resolving. That would incorrectly prevent the command from removing everything in `a`.
 
 This is the main modeling payoff of the extension: normalization should happen at the level of path meaning, not be left implicit inside destructive command execution.
-
-## Running the Project
-The current runnable model is the midterm baseline.
-
-1. Open `midterm/file-system.frg` in Forge.
-2. Run the `test expect` blocks to execute the satisfiability and checking tests.
-3. Open Sterling to view trace instances; the model already points to `midterm/vis.js` for custom visualization.
-
-At the moment, the path-resolution extension described above is a design target rather than a completed Forge file in the repository root.
-
-## Takeaways So Far
-Even the baseline model is useful because it separates structural invariants from command semantics and makes illegal command sequences easy to state and check.
-
-The planned path extension adds a more realistic source of bugs: commands over syntactic paths that may contain `.` and `..`. The expected insight is that path normalization is not just a convenience layer; it changes whether destructive operations are modeled correctly.
-
-## Repository Notes
-`midterm/` contains the current implementation.
-
-The top-level project direction is an extension of that model rather than a separate system.
 
 ## Collaborators
 - Alexander Lee
