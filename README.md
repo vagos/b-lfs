@@ -8,6 +8,7 @@ Our goal is to use modeling to expose edge cases in path-based command semantics
 
 ### Foundation
 The basic model is a rooted file-system tree with files, directories, liveness, parent pointers, and command transitions for `touch`, `mkdir`, `rm`, `rmr`, `mv`, and `cp`.
+The main leap between this model and the one we implemented for our midterm is that this will be implemented using _temporal forge_.
 
 Scope at this level:
 
