@@ -1,68 +1,139 @@
-# Curiosity Modeling: Modeling the UNIX Filesystem and Filesystem-manipulating Commands
+# Modeling a UNIX-Style File System with Path Resolution
 
-Prompt template used:
+## Overview
+This project studies a simplified UNIX-style file system in Forge. The current runnable artifact models the file-system tree and several commands as state transitions; the next extension is to add named paths, including nonlinear path components such as `.` and `..`.
 
+The repository currently contains:
+
+- a working baseline model in `midterm/file-system.frg`
+- a custom Sterling visualization in `midterm/vis.js`
+- a design sketch for the path-resolution extension captured in the original project notes
+
+The main question driving the final version is whether command behavior stays correct once paths are resolved and normalized rather than treated as direct object references.
+
+## Goals
+Our goal is not just to recreate a file system, but to use modeling to expose edge cases in path-based command semantics.
+
+### Foundation
+The basic model we are confident we can complete is a rooted file-system tree with files, directories, liveness, parent pointers, and command transitions for `touch`, `mkdir`, `rm`, `rmr`, `mv`, and `cp`.
+
+Three-bucket scope at this level:
+
+- Core: rooted tree structure, live/dead objects, trace-based command execution, structural invariants, and tests for command preconditions and postconditions
+- Closely related: small trace exploration and custom visualization of state changes
+- Unrelated / left out: names, paths, `.` and `..`, permissions, links, file contents, concurrency, and large scopes
+
+The intended outcome at this level is a stable Forge model with tests showing that each predicate behaves as intended and that the baseline commands preserve well-formedness.
+
+### Target
+The project we plan to hand in extends the baseline model with names and explicit path objects. Commands should resolve paths relative to a base directory rather than operating on objects directly.
+
+Three-bucket scope at this level:
+
+- Core: named children, path components, path resolution, normalization, and path-based versions of the filesystem commands
+- Closely related: equivalence or mismatch tests comparing raw-path behavior with normalized-path behavior on edge cases such as `a/b/..`
+- Unrelated / left out: symbolic links, permission semantics, file contents, shell parsing, and realistic filesystem scale
+
+The intended outcome at this level is a tested model that can explain at least one nontrivial path-resolution bug or semantic surprise, especially around destructive operations like recursive removal.
+
+### Reach
+The stretch goal is to go beyond basic path resolution and analyze higher-level semantic questions that are interesting but may be difficult to complete cleanly in scope.
+
+Possible reach directions:
+
+- compare command behaviors before and after normalization in a more systematic way
+- model limited permission constraints
+- study equivalence or non-equivalence between different command sequences over paths
+- improve the visualization so traces show not just state differences, but also which command and path were used at each step
+
+The intended outcome at this level is not just more features, but a sharper claim about what normalization or path semantics changes in the model.
+
+At all three levels, testing is part of the goal. We are not only checking high-level properties; we are also testing that predicates such as resolution, normalization, and command transitions behave the way we intend on small examples and edge cases.
+
+## Current Model
+The current implemented model is in `midterm/file-system.frg`.
+
+It uses:
+
+- `FsObj`, `File`, and `Dir` to represent abstract file-system objects
+- `State` to represent a snapshot of the system
+- `live` to track which objects exist in a state
+- `parent` to encode the directory tree
+- `root` for the unique root directory
+- `next` to build a linear trace of command executions
+
+The baseline invariants require that:
+
+- the root is always live
+- the root has no parent
+- every live non-root object has a live parent
+- the parent relation is acyclic
+- every live object is reachable from the root
+
+The transition predicates model `touch`, `mkdir`, `rm`, `rmr`, `mv`, and `cp` as pre/post-state relations. The trace model starts from an `init` state and requires every `next` step to satisfy one of those command predicates.
+
+## Testing and Checking
+The Forge model includes:
+
+- satisfiability tests for initialization, well-formed states, and traces
+- precondition tests for each command
+- preservation checks showing that each command maintains well-formedness
+- trace-level tests for valid and invalid command sequences
+- assertions that the root never changes and is always live
+
+These checks let us distinguish behaviors that should be possible, such as `touch` followed by `rm`, from behaviors that should be impossible, such as deleting an object and then moving it later in the same trace.
+
+## Planned Path Extension
+The next version of the model introduces names and path components:
+
+```forge
+abstract sig FsObj {}
+sig File, Dir extends FsObj {}
+sig Name {}
+
+abstract sig Component {}
+sig NameComp extends Component { name: one Name }
+one sig Dot, DotDot extends Component {}
+
+sig Path {
+  segs: pfunc Int -> Component
+}
 ```
-A student in Brown's CSCI 1710, a lightweight formal-methods course using Forge, is starting their midterm project. They have lots of freedom to explore a domain that's interesting to them, but are also looking for ways that their work on the project can support their goals in the course. Provide feedback on the following idea(s), given the following student profile. Keep the feedback fact-based, concise and natural. Remember that the student has not been using Forge for long, and can seek further advice from course staff. Feedback should focus on (1) helping to make the idea technically well-defined; (2) potential modeling pitfalls and places to seek advice; and (3) advice on potential, easily implemented, project enhancements tailored to the student's interests.  Do not provide Forge code or documentation.
 
-PROJECT IDEA: Modelling the UNIX filesystem and commands interacting with it, such as `cat`, `rm`, `cp`, and `mv`.
+Instead of resolving commands directly against objects, commands will take paths. Resolution will be modeled inductively from a base directory:
 
-STUDENT PROFILE: 
+- `NameComp(n)` looks up a named child
+- `Dot` keeps the current object unchanged
+- `DotDot` moves to the parent, except that root stays at root
 
-Vagos' profile:
-My avatar is a researcher interested in applying formal methods to verify key properties of the practical systems they are developing.
-In addition, they want to be able to understand concepts from the CSCI 1710 course to the point where they can teach parts relevant to courses they are helping develop (for example, Distributed Systems).
+The main motivating edge case is:
 
-Zekai's profile:
-The avatar I developed is students who are preparing to apply for a PhD in formal methods and wants to build a stronger, more complete foundation before stepping into deeper research.
-They already have experience closely tied to formal methods and programming languages, but they suspect there are still gaps in their knowledge. Their learning goals include 1) solidifying their understanding of formal methods, 2) having more understanding on logic constraint programming and model checking and 3) learning how to communicate formal methods ideas with others. Course 1710 will help them by offering them structured practice designing and iterating on formal models, making them familiar with Forge (and potentially the design ideas and choices behind it), and giving them opportunities to discuss the topics with peers and instructors.
-```
+`rmr a/b/..`
 
-ChatGPT's response:
+After normalization, this path should behave like `rmr a/.`, so both should delete the same directory. If recursive removal is instead modeled by walking the raw path while mutation is already in progress, deleting `b` too early can make `a/b/..` stop resolving. That would incorrectly prevent the command from removing everything in `a`.
 
-```
-Modeling a UNIX filesystem and core commands is a well-scoped project that highlights state invariants, transition semantics, and safety properties. Define a minimal abstraction: a hierarchical tree with directories and files, deterministic path resolution, and a clear notion of identity. Treat commands (cat, rm, cp, mv) as state transitions with explicit preconditions and postconditions, and specify invariants such as tree acyclicity, absence of dangling references, preservation of identity under mv, and non-aliasing under cp. Starting with a small scope (e.g., no recursive deletion or permissions) will keep the model analyzable and help clarify correctness properties.
+This is the main modeling payoff of the extension: normalization should happen at the level of path meaning, not be left implicit inside destructive command execution.
 
-Key pitfalls include path-resolution complexity, confusing file identity with content, handling deletion semantics, and state explosion from deep trees or copying. Seek staff guidance on representing hierarchy and transitions cleanly and on controlling scope. If time allows, enhancements aligned with systems and formal-methods interests include checking command commutativity, modeling failure atomicity, adding inode/link abstractions, or exploring simple concurrent interleavings. Documenting abstraction choices and tradeoffs will strengthen both pedagogical value and formal rigor.
-```
-# Main Response
+## Running the Project
+The current runnable model is the midterm baseline.
 
-## Project Objective
-This project models a simplified UNIX-style file system and command behavior over time.
-The goal is to verify both structure (the file system remains a rooted tree) and behavior (each command changes only what it should).
-Ideally, the model should be able to verify incorrect command compositions.
-For example, invoking `rm f; rm f` is invalid (file `f` is deleted twice), while `cp f g; rm f` is valid (file `f` is copied to `g`, then `f` is deleted).
+1. Open `midterm/file-system.frg` in Forge.
+2. Run the `test expect` blocks to execute the satisfiability and checking tests.
+3. Open Sterling to view trace instances; the model already points to `midterm/vis.js` for custom visualization.
 
-## Model Design and Visualization
-The model uses a `State` signature with relations for object liveness (`live`), hierarchy (`parent`), root directory (`root`), and trace progression (`next`).
+At the moment, the path-resolution extension described above is a design target rather than a completed Forge file in the repository root.
 
-The `trace` enforces a linear history.
-It starts from `init`, each transition satisfies `step`, and there are no cycles in `next`.
-`step` is a choice among command predicates: `touch`, `mkdir`, `rm`, `rmr`, `mv`, and `cp`.
+## Takeaways So Far
+Even the baseline model is useful because it separates structural invariants from command semantics and makes illegal command sequences easy to state and check.
 
-We developed a custom visualization for Sterling.
-Each state is shown as a filesystem tree (root, directories, and files), and each card includes the `FsObj`s involved in the transition from the previous state (`added`, `removed`, and `moved`).
-One improvement we plan to make is to propagate the information about which command is invoked at each transition, in order for the visualization to have a clearer one-to-one mapping to the command sequence under test.
+The planned path extension adds a more realistic source of bugs: commands over syntactic paths that may contain `.` and `..`. The expected insight is that path normalization is not just a convenience layer; it changes whether destructive operations are modeled correctly.
 
-## Signatures and Predicates
-The `FsObj` type describes the abstract file-system object type; `File` and `Dir` extend it.
-A `State` represents one snapshot of the system.
-The `isLive`/`isDead` predicates describe whether an object can exist or not across states.
-The `wellformed` predicate encodes our core invariants: live root, root has no parent, every live non-root object has a live parent, no parent cycles, and that the root directory is reachable from every live object.
-We also developed six transition predicates that define command preconditions and postconditions, which specify how a command invocation would affect the filesystem topology across two consecutive (`pre` and `post`) states.
+## Repository Notes
+`midterm/` contains the current implementation.
 
-## Testing
-The model is tested with 5 test-expect blocks and 3 assertions:
-1. `fileSystemTests`: baseline sat/unsat sanity checks for structure
-2. `transitionTests`: command precondition and transition validity
-3. `propertyTests`: property checks of transitions
-4. `traceUnsat`: behavior that must be impossible, i.e., a buggy command composition
-5. `traceSat`: behavior that is possible, i.e., a valid command composition
+The top-level project direction is an extension of that model rather than a separate system.
 
-Additionally, three trace-level invariants are verified as assertions:
-- Every state on the trace is well-formed
-- The root directory never changes across states
-- The root directory is always live
-
-## Documentation
-The Forge file includes comments for invariants, transitions, and test groups.  
+## Collaborators
+- Alexander Lee
+- Evangelos Lamprou
+- Zekai Li
