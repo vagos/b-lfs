@@ -1,7 +1,8 @@
 # Modeling a UNIX-Style File System with Path Resolution
 
 ## Overview
-This project studies a simplified UNIX-style file system in Forge. The current runnable artifact models the file-system tree and several commands as state transitions; the next extension is to add named paths, including nonlinear path components such as `.` and `..`.
+This project studies a simplified UNIX-style file system in Forge. It will model the file-system tree and several commands as state transitions. The model will include named paths, including nonlinear path components such as `.` and `..`.
+Filesystem bugs are ubiquitous and often involve edge cases in path resolution, so this project will use modeling to explore how path semantics can lead to surprising behaviors, especially around destructive operations like recursive removal.
 
 ## Goals
 Our goal is to use modeling to expose edge cases in path-based command semantics.
@@ -34,7 +35,6 @@ The stretch goal is to go beyond basic path resolution and analyze higher-level 
 
 Possible reach directions:
 
-- compare command behaviors before and after normalization in a more systematic way
 - model limited permission constraints
 - study equivalence or non-equivalence between different command sequences over paths
 - improve the visualization so traces show not just state differences, but also which command and path were used at each step
