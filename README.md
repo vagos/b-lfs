@@ -107,6 +107,35 @@ After normalization, this path should behave like `rmr a/.`, so both should dele
 
 This is the main modeling payoff of the extension: normalization should happen at the level of path meaning, not be left implicit inside destructive command execution.
 
+
+## Design Check 1
+> Great choice of topic! Filesystem semantics are a classic source of subtle bugs, and Forge is well-suited for exploring them. What specific surprising behaviors or edge cases are you hoping to surface? Having a concrete example or two in mind early will help focus your modeling.
+
+Our main motivating edge case is `rmr a/b/..`. After normalization, this path should behave like `rmr a/.`, so both commands should delete the same directory. If recursive removal is instead modeled by walking the raw path while mutation is already in progress, deleting `b` too early can make `a/b/..` stop resolving. That would incorrectly prevent the command from removing everything in `a`.
+
+The model is intended to surface exactly this kind of semantic mismatch: normalization should determine the meaning of the path before destructive effects begin.
+
+> The three-bucket breakdown is very clear and well-scoped. One thing to think about is how you will represent "liveness" of files/directories as a boolean field, or via some other mechanism. Make sure you have a clear answer to this before design check 1, since it affects everything else.
+
+We plan to represent liveness with an explicit mutable set of live filesystem objects:
+
+```forge
+one sig FS {
+  var live: set FsObj,
+  ...
+}
+```
+
+This makes transitions straightforward to express and test. For example, removal can update liveness by subtracting the removed object:
+
+```forge
+pred rm[x: FsObj] {
+  ...,
+  live' = live - x,
+  ...
+}
+```
+
 ## Collaborators
 - Alexander Lee
 - Evangelos Lamprou
