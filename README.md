@@ -126,7 +126,7 @@ one sig FS {
 }
 ```
 
-This makes transitions straightforward to express and test. For example, removal can update liveness by subtracting the removed object:
+This makes transitions straightforward to express. For example, removal can update liveness by subtracting the removed object:
 
 ```forge
 pred rm[x: FsObj] {
