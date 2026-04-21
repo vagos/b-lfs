@@ -117,7 +117,7 @@ The model is intended to surface exactly this kind of semantic mismatch: normali
 
 > The three-bucket breakdown is very clear and well-scoped. One thing to think about is how you will represent "liveness" of files/directories as a boolean field, or via some other mechanism. Make sure you have a clear answer to this before design check 1, since it affects everything else.
 
-We plan to represent liveness with an explicit mutable set of live filesystem objects:
+We plan to represent liveness with an explicit set of live filesystem objects:
 
 ```forge
 one sig FS {
