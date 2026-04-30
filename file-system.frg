@@ -32,11 +32,11 @@ one sig FS {
     var entryName: pfunc FsObj -> Name
 }
 
--- Stores the bulk rmr result so recursive rmr traces can be compared later.
+-- Stores the reference rmr post-state for a raw recursive run.
 one sig RmrSpec {
-    var expectedLive: set FsObj,
-    var expectedParent: pfunc FsObj -> Dir,
-    var expectedEntryName: pfunc FsObj -> Name
+    var liveAfter: set FsObj,
+    var parentAfter: pfunc FsObj -> Dir,
+    var entryNameAfter: pfunc FsObj -> Name
 }
 
 pred isLive[obj: FsObj] {
@@ -197,7 +197,7 @@ pred recursiveRmrStep[target: Dir] {
     }
 }
 
--- Bulk reference semantics for recursive removal.
+-- Reference semantics for recursive removal: delete the whole subtree at once.
 pred rmr[d: Dir] {
     isLive[d]
     d != Root
@@ -434,7 +434,7 @@ pred rmPath[base: Dir, p: Path] {
     }
 }
 
--- Correct path-based rmr resolves once, then performs bulk rmr.
+-- Path-based rmr resolves once, then applies the reference rmr relation.
 pred rmrPath[base: Dir, p: Path] {
     some d: Dir | {
         resolvesToDir[base, p, d]
@@ -448,37 +448,37 @@ pred rmrNormalizedPath[base: Dir, raw, norm: Path] {
     rmrPath[base, norm]
 }
 
--- Records the bulk rmr post-state expected from target.
-pred recordBulkRmrSpec[target: Dir] {
-    RmrSpec.expectedLive' = FS.live - subtree[target]
-    RmrSpec.expectedParent' = FS.parent - subtree[target] -> Dir
-    RmrSpec.expectedEntryName' = FS.entryName - subtree[target] -> Name
+-- Records the rmr reference post-state for target.
+pred recordRmrSpec[target: Dir] {
+    RmrSpec.liveAfter' = FS.live - subtree[target]
+    RmrSpec.parentAfter' = FS.parent - subtree[target] -> Dir
+    RmrSpec.entryNameAfter' = FS.entryName - subtree[target] -> Name
 }
 
--- Carries the recorded bulk result across recursive steps.
-pred keepBulkRmrSpec {
-    RmrSpec.expectedLive' = RmrSpec.expectedLive
-    RmrSpec.expectedParent' = RmrSpec.expectedParent
-    RmrSpec.expectedEntryName' = RmrSpec.expectedEntryName
+-- Carries the recorded rmr reference post-state across recursive steps.
+pred keepRmrSpec {
+    RmrSpec.liveAfter' = RmrSpec.liveAfter
+    RmrSpec.parentAfter' = RmrSpec.parentAfter
+    RmrSpec.entryNameAfter' = RmrSpec.entryNameAfter
 }
 
--- True when the current state equals the recorded bulk result.
-pred matchesBulkRmrSpec {
-    FS.live = RmrSpec.expectedLive
-    FS.parent = RmrSpec.expectedParent
-    FS.entryName = RmrSpec.expectedEntryName
+-- True when the current filesystem equals the recorded rmr reference state.
+pred matchesRmrSpec {
+    FS.live = RmrSpec.liveAfter
+    FS.parent = RmrSpec.parentAfter
+    FS.entryName = RmrSpec.entryNameAfter
 }
 
--- Starts buggy raw recursive rmr and records the bulk reference result.
-pred startRawRecursiveRmrPathWithSpec[base: Dir, raw: Path] {
+-- Starts raw recursive rmr and records the reference rmr result.
+pred startRawRecursiveRmrPath[base: Dir, raw: Path] {
     some target: Dir | {
         resolvesToDir[base, raw, target]
         recursiveRmrStep[target]
-        recordBulkRmrSpec[target]
+        recordRmrSpec[target]
     }
 }
 
--- Buggy recursive rmr re-resolves the raw path each step.
+-- Raw recursive rmr re-resolves the path at each recursive step.
 pred rawRecursiveRmrPathStep[base: Dir, raw: Path] {
     some target: Dir | {
         resolvesToDir[base, raw, target]
@@ -486,10 +486,45 @@ pred rawRecursiveRmrPathStep[base: Dir, raw: Path] {
     }
 }
 
--- Continues buggy raw recursive rmr while preserving the reference result.
-pred continueRawRecursiveRmrPathWithSpec[base: Dir, raw: Path] {
+-- Continues raw recursive rmr while preserving the reference result.
+pred continueRawRecursiveRmrPath[base: Dir, raw: Path] {
     rawRecursiveRmrPathStep[base, raw]
-    keepBulkRmrSpec
+    keepRmrSpec
+}
+
+-- True when the raw path can still name a non-root directory to remove.
+pred rawRecursiveRmrCanStep[base: Dir, raw: Path] {
+    some target: Dir | {
+        resolvesToDir[base, raw, target]
+        target != Root
+    }
+}
+
+-- Terminal mismatch: raw recursion cannot step and has not reached rmr spec.
+pred rawRecursiveRmrStuckBeforeRmrSpec[base: Dir, raw: Path] {
+    not matchesRmrSpec
+    not rawRecursiveRmrCanStep[base, raw]
+}
+
+-- Full raw recursive run: start once, then repeat re-resolution until terminal.
+pred rawRecursiveRmrRun[base: Dir, raw: Path] {
+    startRawRecursiveRmrPath[base, raw]
+
+    next_state always {
+        matchesRmrSpec implies {
+            stutter
+            keepRmrSpec
+        }
+
+        rawRecursiveRmrStuckBeforeRmrSpec[base, raw] implies {
+            stutter
+            keepRmrSpec
+        }
+
+        (not matchesRmrSpec and rawRecursiveRmrCanStep[base, raw]) implies {
+            continueRawRecursiveRmrPath[base, raw]
+        }
+    }
 }
 
 -- Path-based mv resolves source and destination parent paths first.
@@ -625,59 +660,68 @@ pred normalizationPreservesResolution {
     }
 }
 
--- Bad behavior: raw recursive rmr gets stuck before matching bulk rmr.
-pred rawRecursiveRmrDiffersForPath[p: Path] {
-    some d: Dir | resolvesToDir[Root, p, d]
-    startRawRecursiveRmrPathWithSpec[Root, p]
-    next_state {
-        no d: Dir | resolvesToDir[Root, p, d]
-        not matchesBulkRmrSpec
-    }
+-- A full raw recursive rmr run can stop before reaching rmr spec.
+pred rawRecursiveRmrViolatesRmrSpecForPath[p: Path] {
+    rawRecursiveRmrRun[Root, p]
+    eventually rawRecursiveRmrStuckBeforeRmrSpec[Root, p]
 }
 
--- Discover any raw-path recursive-rmr mismatch.
-pred rawRecursiveRmrDiffersFromBulkRmr {
+-- Discover any raw-path recursive-rmr violation of rmr spec.
+pred rawRecursiveRmrViolatesRmrSpec {
     trace
     eventually {
-        some p: Path | rawRecursiveRmrDiffersForPath[p]
+        some p: Path | rawRecursiveRmrViolatesRmrSpecForPath[p]
     }
 }
 
--- Discover any raw-path recursive-rmr mismatch, but disallowing explicit . components.
-pred noDotRecursiveRmrDiffersFromBulkRmr {
+-- Discover an rmr-spec violation while disallowing explicit . components.
+pred noDotRawRecursiveRmrViolatesRmrSpec {
     trace
     eventually {
         some p: Path | {
             noDot[p]
-            rawRecursiveRmrDiffersForPath[p]
+            rawRecursiveRmrViolatesRmrSpecForPath[p]
         }
     }
 }
 
--- Discover any raw-path recursive-rmr mismatch, but disallowing explicit .. components.
-pred noDotDotRecursiveRmrDiffersFromBulkRmr {
+-- Discover an rmr-spec violation while disallowing explicit .. components.
+pred noDotDotRawRecursiveRmrViolatesRmrSpec {
     trace
     eventually {
         some p: Path | {
             noDotDot[p]
-            rawRecursiveRmrDiffersForPath[p]
+            rawRecursiveRmrViolatesRmrSpecForPath[p]
         }
     }
 }
 
--- Discover any raw-path recursive-rmr mismatch for pure name-only paths.
-pred linearRecursiveRmrDiffersFromBulkRmr {
+-- Discover an rmr-spec violation for pure name-only paths.
+pred linearRawRecursiveRmrViolatesRmrSpec {
     trace
     eventually {
         some p: Path | {
             noDot[p]
             noDotDot[p]
-            rawRecursiveRmrDiffersForPath[p]
+            rawRecursiveRmrViolatesRmrSpecForPath[p]
         }
     }
 }
 
-// Foundation-level tests
+-- A plain path can complete the full recursive run and match rmr spec.
+pred linearRawRecursiveRmrCanMatchRmrSpec {
+    trace
+    eventually {
+        some p: Path | {
+            noDot[p]
+            noDotDot[p]
+            rawRecursiveRmrRun[Root, p]
+            eventually matchesRmrSpec
+        }
+    }
+}
+
+-- Foundation-level tests.
 test expect foundationTests {
     initSat: {
         init
@@ -736,28 +780,32 @@ test expect normalizationTests {
     } for 5 FsObj, 3 Dir, 2 File, 3 Name, 5 Component, 2 Path, 6 PathEval is checked
 }
 
--- Counterexample existence checks for raw recursive rmr.
-test expect recursiveRmrCounterexampleTests {
-    unrestrictedCounterexampleExists: {
-        rawRecursiveRmrDiffersFromBulkRmr
+-- Full-run checks for raw recursive rmr.
+test expect rawRecursiveRmrRunTests {
+    linearRunCanMatchRmrSpec: {
+        linearRawRecursiveRmrCanMatchRmrSpec
+    } for 4 FsObj, 3 Dir, 1 File, 2 Name, 4 Component, 1 Path, 3 PathEval is sat
+
+    unrestrictedRunCanViolateRmrSpec: {
+        rawRecursiveRmrViolatesRmrSpec
     } for 5 FsObj, 3 Dir, 2 File, 3 Name, 5 Component, 2 Path, 6 PathEval is sat
 
-    noDotCounterexampleExists: {
-        noDotRecursiveRmrDiffersFromBulkRmr
+    noDotRunCanViolateRmrSpec: {
+        noDotRawRecursiveRmrViolatesRmrSpec
     } for 5 FsObj, 3 Dir, 2 File, 3 Name, 5 Component, 2 Path, 6 PathEval is sat
 }
 
--- Without .., raw recursive path-rmr should match bulk rmr.
-noDotDotRecursiveRmrEqualsBulkRmrAssertion:
-    assert noDotDotRecursiveRmrDiffersFromBulkRmr is unsat
+-- Without .., raw recursive path-rmr should match rmr spec.
+noDotDotRawRecursiveRmrMatchesSpecAssertion:
+    assert noDotDotRawRecursiveRmrViolatesRmrSpec is unsat
     for 4 FsObj, 3 Dir, 1 File, 2 Name, 4 Component, 1 Path, 3 PathEval
 
--- For name-only paths, raw recursive path-rmr should match bulk rmr.
-linearRecursiveRmrEqualsBulkRmrAssertion:
-    assert linearRecursiveRmrDiffersFromBulkRmr is unsat
+-- For name-only paths, raw recursive path-rmr should match rmr spec.
+linearRawRecursiveRmrMatchesSpecAssertion:
+    assert linearRawRecursiveRmrViolatesRmrSpec is unsat
     for 4 FsObj, 3 Dir, 1 File, 2 Name, 4 Component, 1 Path, 3 PathEval
 
--- Expected failure: Forge finds a raw-path recursive-rmr counterexample.
-rawRecursiveRmrEqualsBulkRmrAssertion:
-    assert rawRecursiveRmrDiffersFromBulkRmr is unsat
+-- Expected failure: a raw-path recursive-rmr violating trace.
+rawRecursiveRmrMatchesSpecAssertion:
+    assert rawRecursiveRmrViolatesRmrSpec is unsat
     for 5 FsObj, 3 Dir, 2 File, 3 Name, 5 Component, 2 Path, 6 PathEval
