@@ -152,11 +152,6 @@ def parse_operation(argv: list[str], line: int, text: str) -> Operation:
     if command == "rm":
         return parse_rm(argv, line, text)
 
-    if command == "rmr":
-        if len(argv) != 2:
-            raise TranslationError(f"line {line}: rmr needs exactly one path")
-        return Operation("rmr", line, text, path=parse_path(argv[1], line, "rmr target"))
-
     if command == "mv":
         if len(argv) != 3:
             raise TranslationError(f"line {line}: mv needs a source and destination")

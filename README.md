@@ -44,9 +44,9 @@ The intended outcome at this level is not just more features, but a sharper clai
 At all three levels, testing is part of the goal. We are not only checking high-level properties; we are also testing that predicates such as resolution, normalization, and command transitions behave the way we intend on small examples and edge cases.
 
 ## Current Model
-The current implemented model is in `midterm/file-system.frg`.
+The temporal Forge model is in `file-system.frg`.
 
-It uses:
+The base model uses:
 
 - `FsObj`, `File`, and `Dir` to represent abstract file-system objects
 - `State` to represent a snapshot of the system
@@ -75,6 +75,24 @@ The Forge model includes:
 - assertions that the root never changes and is always live
 
 These checks let us distinguish behaviors that should be possible, such as `touch` followed by `rm`, from behaviors that should be impossible, such as deleting an object and then moving it later in the same trace.
+
+## Shell-To-Forge CLI
+This project also supports verification of narrow class of, but otherwise unmodified, shell progrems.
+The CLI in `scripts/shell_to_forge.py` parses a shell script, emits a small generated Forge harness into `{script_name}.model.frg`, and then runs `racket ... -O run_sterling off` on that generated file so Forge executes its `test expect` block to check whether the filesystem modification commands in the script can be satisfied by the model.
+
+Setup:
+
+- `python3 -m venv .venv`
+- `.venv/bin/pip install -r requirements.txt`
+
+Run:
+
+- `.venv/bin/python scripts/shell_to_forge.py examples/demo.sh`
+- `.venv/bin/python scripts/shell_to_forge.py examples/wrong.sh`
+
+That command writes `examples/demo.model.frg`, which opens `../file-system.frg`.
+
+The translator supports simple literal-path uses of `mkdir`, `touch`, `rm`, `rm -r`, `mv`, and `cp`, and rejects redirections, substitutions, and shell control flow.
 
 ## Planned Path Extension
 The next version of the model introduces names and path components:

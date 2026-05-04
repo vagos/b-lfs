@@ -1,0 +1,2 @@
+libdash @ git+https://github.com/binpash/libdash
+shasta @ git+https://github.com/binpash/shasta@main
