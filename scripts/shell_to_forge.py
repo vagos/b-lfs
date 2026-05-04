@@ -256,31 +256,43 @@ def render_path_binding(path_atom: str, spec: PathSpec, comp_atoms: dict[str, st
     return f"    {path_atom}.segs = " + " + ".join(parts)
 
 
-def render_operation(op: Operation, index: int, name_atoms: dict[str, str], path_atoms: dict[PathSpec, str]) -> str:
+def render_operation(
+    op: Operation,
+    index: int,
+    name_atoms: dict[str, str],
+    path_atoms: dict[PathSpec, str],
+    buggy: bool = False,
+) -> list[str]:
     if op.kind == "mkdir":
-        return (
+        return [
             f"some dir{index}: Dir | "
             f"mkdirPath[Root, {path_atoms[op.dest_parent]}, {name_atoms[op.name]}, dir{index}]"
-        )
+        ]
     if op.kind == "touch":
-        return (
+        return [
             f"some file{index}: File | "
             f"touchPath[Root, {path_atoms[op.dest_parent]}, {name_atoms[op.name]}, file{index}]"
-        )
+        ]
     if op.kind == "rm":
-        return f"rmPath[Root, {path_atoms[op.path]}]"
+        return [f"rmPath[Root, {path_atoms[op.path]}]"]
     if op.kind == "rmr":
-        return f"rmrPath[Root, {path_atoms[op.path]}]"
+        if buggy:
+            path_atom = path_atoms[op.path]
+            return [
+                f"rawRecursiveRmrRun[Root, {path_atom}]",
+                f"eventually rawRecursiveRmrStuckBeforeRmrSpec[Root, {path_atom}]",
+            ]
+        return [f"rmrPath[Root, {path_atoms[op.path]}]"]
     if op.kind == "mv":
-        return (
+        return [
             f"mvPath[Root, {path_atoms[op.src]}, {path_atoms[op.dest_parent]}, {name_atoms[op.name]}]"
-        )
+        ]
     if op.kind == "cp":
-        return (
+        return [
             f"some file{index}: File | "
             f"cpPath[Root, {path_atoms[op.src]}, {path_atoms[op.dest_parent]}, "
             f"{name_atoms[op.name]}, file{index}]"
-        )
+        ]
     raise AssertionError(f"unreachable operation kind: {op.kind}")
 
 
@@ -290,15 +302,19 @@ def render_operation_sequence(
     path_atoms: dict[PathSpec, str],
     index: int = 0,
     indent: str = "    ",
+    buggy: bool = False,
 ) -> list[str]:
-    line = indent + render_operation(operations[index], index, name_atoms, path_atoms)
+    op_lines = render_operation(operations[index], index, name_atoms, path_atoms, buggy)
+    indented = [indent + line for line in op_lines]
     if index == len(operations) - 1:
-        return [line]
+        return indented
 
     return [
-        line,
+        *indented,
         indent + "next_state {",
-        *render_operation_sequence(operations, name_atoms, path_atoms, index + 1, indent + "    "),
+        *render_operation_sequence(
+            operations, name_atoms, path_atoms, index + 1, indent + "    ", buggy
+        ),
         indent + "}",
     ]
 
@@ -326,21 +342,32 @@ def compute_scopes(
     }
 
 
+def compute_trace_length(operations: list[Operation], buggy: bool) -> int:
+    # Need init + each operation + slack for lasso closure / recursion.
+    slack = 5 if buggy else 2
+    return max(len(operations) + slack, 6)
+
+
 def render_model(
     operations: list[Operation],
     script_path: Path,
     output_path: Path,
     base_model_path: Path,
     expected_result: str,
+    viz: bool = False,
+    buggy: bool = False,
 ) -> str:
     name_atoms, comp_atoms, path_atoms = collect_symbols(operations)
     scopes = compute_scopes(operations, name_atoms, comp_atoms, path_atoms)
+    trace_length = compute_trace_length(operations, buggy)
     base_ref = os.path.relpath(base_model_path, output_path.parent).replace(os.sep, "/")
 
     lines = [
         "#lang forge/temporal",
         "",
         f'open "{base_ref}"',
+        "",
+        f"option max_tracelength {trace_length}",
         "",
         f"-- Generated from {script_path.as_posix()} by scripts/shell_to_forge.py",
         "",
@@ -374,23 +401,46 @@ def render_model(
     lines.append("pred generatedScript {")
     lines.append("    trace")
     lines.append("    generatedPaths")
-    lines.extend(render_operation_sequence(operations, name_atoms, path_atoms))
+    lines.extend(render_operation_sequence(operations, name_atoms, path_atoms, buggy=buggy))
     lines.append("}")
     lines.append("")
 
-    lines.append("test expect generatedScriptTests {")
-    lines.append(f"    generatedScript{expected_result.capitalize()}: {{")
-    lines.append("        generatedScript")
-    lines.append(
-        "    } for "
+    scope_clause = (
         f"{scopes['FsObj']} FsObj, {scopes['Dir']} Dir, {scopes['File']} File, "
         f"{scopes['Name']} Name, {scopes['Component']} Component, "
-        f"{scopes['Path']} Path, {scopes['PathEval']} PathEval is {expected_result}"
+        f"{scopes['Path']} Path, {scopes['PathEval']} PathEval"
     )
-    lines.append("}")
-    lines.append("")
+
+    if viz:
+        lines.append("run {")
+        lines.append("    generatedScript")
+        lines.append(f"}} for {scope_clause}")
+        lines.append("")
+    else:
+        lines.append("test expect generatedScriptTests {")
+        lines.append(f"    generatedScript{expected_result.capitalize()}: {{")
+        lines.append("        generatedScript")
+        lines.append(f"    }} for {scope_clause} is {expected_result}")
+        lines.append("}")
+        lines.append("")
 
     return "\n".join(lines)
+
+
+def validate_buggy_operations(operations: list[Operation]) -> None:
+    rmr_indices = [i for i, op in enumerate(operations) if op.kind == "rmr"]
+    if not rmr_indices:
+        raise TranslationError(
+            "--buggy requires the script to contain at least one `rm -r` command"
+        )
+    if len(rmr_indices) > 1:
+        raise TranslationError(
+            "--buggy supports at most one `rm -r` command per script"
+        )
+    if rmr_indices[0] != len(operations) - 1:
+        raise TranslationError(
+            "--buggy requires `rm -r` to be the last command in the script"
+        )
 
 
 def generate(
@@ -398,20 +448,26 @@ def generate(
     output_path: Path,
     base_model_path: Path,
     expected_result: str,
+    viz: bool = False,
+    buggy: bool = False,
 ) -> str:
     operations = parse_script(script_path)
-    return render_model(operations, script_path, output_path, base_model_path, expected_result)
+    if buggy:
+        validate_buggy_operations(operations)
+    return render_model(
+        operations, script_path, output_path, base_model_path, expected_result, viz, buggy
+    )
 
 
 def default_output_path(script_path: Path) -> Path:
     return script_path.with_name(f"{script_path.stem}.model.frg")
 
 
-def run_racket(output_path: Path) -> int:
-    proc = subprocess.run(
-        ["racket", output_path.name, "-O", "run_sterling", "off"],
-        cwd=output_path.parent,
-    )
+def run_racket(output_path: Path, viz: bool = False) -> int:
+    cmd = ["racket", output_path.name]
+    if not viz:
+        cmd.extend(["-O", "run_sterling", "off"])
+    proc = subprocess.run(cmd, cwd=output_path.parent)
     return proc.returncode
 
 
@@ -443,7 +499,23 @@ def main() -> int:
         default="sat",
         help="expected satisfiability of the generated script trace",
     )
+    cli.add_argument(
+        "--viz",
+        action="store_true",
+        help="emit a run block and open Sterling instead of running test expect",
+    )
+    cli.add_argument(
+        "--buggy",
+        action="store_true",
+        help="render `rm -r` using raw recursive rmr semantics that re-resolve "
+             "the path on every step (exhibits the rmr a/b/.. bug); requires --viz",
+    )
     args = cli.parse_args()
+
+    if args.viz and args.expect == "unsat":
+        raise SystemExit("--viz requires --expect sat (no witness trace exists for unsat)")
+    if args.buggy and not args.viz:
+        raise SystemExit("--buggy requires --viz")
 
     script_path = args.script.resolve()
     output_path = (
@@ -459,7 +531,9 @@ def main() -> int:
         raise SystemExit(f"base model not found: {base_model_path}")
 
     try:
-        model = generate(script_path, output_path, base_model_path, args.expect)
+        model = generate(
+            script_path, output_path, base_model_path, args.expect, args.viz, args.buggy
+        )
     except TranslationError as exc:
         raise SystemExit(str(exc)) from exc
 
@@ -469,7 +543,7 @@ def main() -> int:
     if args.no_run:
         return 0
 
-    return run_racket(output_path)
+    return run_racket(output_path, args.viz)
 
 
 if __name__ == "__main__":

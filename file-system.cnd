@@ -1,0 +1,22 @@
+temporal:
+  policy: stability
+
+constraints:
+  - orientation: {selector: "FS.parent", directions: [above]}
+
+directives:
+  - icon: {selector: Dir, path: "folder", showLabels: true}
+  - icon: {selector: File, path: "file", showLabels: true}
+
+  - inferredEdge: {name: parent, selector: "FS.parent", style: solid}
+
+  - hideAtom: {selector: FS}
+  - hideAtom: {selector: "FsObj - FS.live"}
+  - hideAtom: {selector: Path}
+  - hideAtom: {selector: PathEval}
+  - hideAtom: {selector: Component}
+  - hideAtom: {selector: Name}
+  - hideAtom: {selector: RmrSpec}
+  - hideAtom: {selector: PathSeqSpec}
+
+  - flag: hideDisconnectedBuiltIns

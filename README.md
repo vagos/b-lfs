@@ -84,20 +84,32 @@ The Forge model includes:
 These checks let us distinguish behaviors that should be possible, such as `touch` followed by `rm`, from behaviors that should be impossible, such as deleting an object and then moving it later in the same trace.
 
 ## Shell-To-Forge CLI
-This project also supports verification of narrow class of, but otherwise unmodified, shell progrems.
-The CLI in `scripts/shell_to_forge.py` parses a shell script, emits a small generated Forge harness into `{script_name}.model.frg`, and then runs `racket ... -O run_sterling off` on that generated file so Forge executes its `test expect` block to check whether the filesystem modification commands in the script can be satisfied by the model.
+This project also supports verification and visualization of a narrow class of, but otherwise unmodified, shell programs.
+
+The CLI in `scripts/shell_to_forge.py` parses a shell script and emits a small generated Forge harness into `{script_name}.model.frg` that opens `../file-system.frg`. By default it then invokes `racket ... -O run_sterling off` so Forge executes the generated `test expect` block, checking whether the filesystem modification commands in the script can be satisfied by the model.
+
+With `--viz`, the harness instead contains a `run` block and Sterling is left enabled, so the trace renders using the spytial-core spec in `file-system.cnd`. Adding `--buggy` to a `--viz` invocation swaps each `rm -r` for the model's raw recursive rmr semantics (re-resolving the path on every step), exhibiting the `rmr a/b/..` bug in Sterling.
 
 Setup:
 
 - `python3 -m venv .venv`
 - `.venv/bin/pip install -r requirements.txt`
 
-Run:
+Run (verification mode):
 
 - `.venv/bin/python scripts/shell_to_forge.py examples/demo.sh`
-- `.venv/bin/python scripts/shell_to_forge.py examples/wrong.sh`
+- `.venv/bin/python scripts/shell_to_forge.py examples/wrong.sh --expect unsat`
 
-That command writes `examples/demo.model.frg`, which opens `../file-system.frg`.
+Run (visualization mode):
+
+- `.venv/bin/python scripts/shell_to_forge.py examples/demo.sh --viz` — correct semantics; the trace removes the `a` subtree cleanly.
+- `.venv/bin/python scripts/shell_to_forge.py examples/demo.sh --viz --buggy` — same script with raw recursive rmr; the trace gets stuck mid-deletion with `a` orphaned.
+
+Other flags:
+
+- `--no-run` — generate the `.model.frg` without invoking racket.
+- `--expect {sat,unsat}` — expected satisfiability for verification mode (default `sat`). `--viz` requires `--expect sat`; combining with `unsat` is rejected up front since there is no witness trace to render.
+- `--buggy` — render `rm -r` using raw recursive rmr semantics. Requires `--viz`. The script must contain exactly one `rm -r` and it must be the last command, since the buggy semantics consumes the rest of the trace.
 
 The translator supports simple literal-path uses of `mkdir`, `touch`, `rm`, `rm -r`, `mv`, and `cp`, and rejects redirections, substitutions, and shell control flow.
 
