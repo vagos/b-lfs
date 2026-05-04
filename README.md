@@ -41,6 +41,13 @@ Possible reach directions:
 
 The intended outcome at this level is not just more features, but a sharper claim about what normalization or path semantics changes in the model.
 
+We have used the model to derive some equivalence analysis for sequences of command invocations on paths:
+
+- `touch p; rm p` is checked as a no-op
+- `mv p q; rm q` is checked against direct `rm p`
+- `rm -r a/b/..` is checked as equivalent to `rm -r a`
+- `rm -r a/b/..` is also checked as non-equivalent to `rm -r a/b`
+
 At all three levels, testing is part of the goal. We are not only checking high-level properties; we are also testing that predicates such as resolution, normalization, and command transitions behave the way we intend on small examples and edge cases.
 
 ## Current Model
