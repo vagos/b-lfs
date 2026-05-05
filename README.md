@@ -4,6 +4,12 @@
 This project studies a simplified UNIX-style file system in Forge. It will model the file-system tree and several commands as state transitions. The model will include named paths, including nonlinear path components such as `.` and `..`.
 Filesystem bugs are ubiquitous and often involve edge cases in path resolution, so this project will use modeling to explore how path semantics can lead to surprising behaviors, especially around destructive operations like recursive removal.
 
+# Instructions
+
+To run the model, you just need to:
+1. Install Racket and Forge.
+2. Run `racket examples/demo.model.frg` to see a visualization of a simple trace. The script this model is based on is in `examples/demo.sh`. If the filesystem when walking through states is not visiable, try enabling "Compare Mode" and enabling all states to see the different snapshots.
+
 ## Goals
 Our goal is to use modeling to expose edge cases in path-based command semantics.
 
@@ -31,15 +37,7 @@ Scope at this level:
 The intended outcome at this level is a tested model that can explain at least one nontrivial path-resolution bug or semantic surprise, especially around destructive operations like recursive removal.
 
 ### Reach
-The stretch goal is to go beyond basic path resolution and analyze higher-level semantic questions that are interesting but may be difficult to complete cleanly in scope.
-
-Possible reach directions:
-
-- model limited permission constraints
-- study equivalence or non-equivalence between different command sequences over paths
-- improve the visualization so traces show not just state differences, but also which command and path were used at each step
-
-The intended outcome at this level is not just more features, but a sharper claim about what normalization or path semantics changes in the model.
+This section goes over the reach goals this project implementes.
 
 We have used the model to derive some equivalence analysis for sequences of command invocations on paths:
 
@@ -49,6 +47,8 @@ We have used the model to derive some equivalence analysis for sequences of comm
 - `rm -r a/b/..` is also checked as non-equivalent to `rm -r a/b`
 
 At all three levels, testing is part of the goal. We are not only checking high-level properties; we are also testing that predicates such as resolution, normalization, and command transitions behave the way we intend on small examples and edge cases.
+
+We have implemented a Sterling visualization configuration in `file-system.cnd`.
 
 ## Current Model
 The temporal Forge model is in `file-system.frg`.
@@ -72,49 +72,7 @@ The baseline invariants require that:
 
 The transition predicates model `touch`, `mkdir`, `rm`, `rmr`, `mv`, and `cp` as pre/post-state relations. The trace model starts from an `init` state and requires every `next` step to satisfy one of those command predicates.
 
-## Testing and Checking
-The Forge model includes:
-
-- satisfiability tests for initialization, well-formed states, and traces
-- precondition tests for each command
-- preservation checks showing that each command maintains well-formedness
-- trace-level tests for valid and invalid command sequences
-- assertions that the root never changes and is always live
-
-These checks let us distinguish behaviors that should be possible, such as `touch` followed by `rm`, from behaviors that should be impossible, such as deleting an object and then moving it later in the same trace.
-
-## Shell-To-Forge CLI
-This project also supports verification and visualization of a narrow class of, but otherwise unmodified, shell programs.
-
-The CLI in `scripts/shell_to_forge.py` parses a shell script and emits a small generated Forge harness into `{script_name}.model.frg` that opens `../file-system.frg`. By default it then invokes `racket ... -O run_sterling off` so Forge executes the generated `test expect` block, checking whether the filesystem modification commands in the script can be satisfied by the model.
-
-With `--viz`, the harness instead contains a `run` block and Sterling is left enabled, so the trace renders using the spytial-core spec in `file-system.cnd`. Adding `--buggy` to a `--viz` invocation swaps each `rm -r` for the model's raw recursive rmr semantics (re-resolving the path on every step), exhibiting the `rmr a/b/..` bug in Sterling.
-
-Setup:
-
-- `python3 -m venv .venv`
-- `.venv/bin/pip install -r requirements.txt`
-
-Run (verification mode):
-
-- `.venv/bin/python scripts/shell_to_forge.py examples/demo.sh`
-- `.venv/bin/python scripts/shell_to_forge.py examples/wrong.sh --expect unsat`
-
-Run (visualization mode):
-
-- `.venv/bin/python scripts/shell_to_forge.py examples/demo.sh --viz` — correct semantics; the trace removes the `a` subtree cleanly.
-- `.venv/bin/python scripts/shell_to_forge.py examples/demo.sh --viz --buggy` — same script with raw recursive rmr; the trace gets stuck mid-deletion with `a` orphaned.
-
-Other flags:
-
-- `--no-run` — generate the `.model.frg` without invoking racket.
-- `--expect {sat,unsat}` — expected satisfiability for verification mode (default `sat`). `--viz` requires `--expect sat`; combining with `unsat` is rejected up front since there is no witness trace to render.
-- `--buggy` — render `rm -r` using raw recursive rmr semantics. Requires `--viz`. The script must contain exactly one `rm -r` and it must be the last command, since the buggy semantics consumes the rest of the trace.
-
-The translator supports simple literal-path uses of `mkdir`, `touch`, `rm`, `rm -r`, `mv`, and `cp`, and rejects redirections, substitutions, and shell control flow.
-
-## Planned Path Extension
-The next version of the model introduces names and path components:
+The extension of the model introduces names and path components:
 
 ```forge
 abstract sig FsObj {}
@@ -142,8 +100,39 @@ The main motivating edge case is:
 
 After normalization, this path should behave like `rmr a/.`, so both should delete the same directory. If recursive removal is instead modeled by walking the raw path while mutation is already in progress, deleting `b` too early can make `a/b/..` stop resolving. That would incorrectly prevent the command from removing everything in `a`.
 
-This is the main modeling payoff of the extension: normalization should happen at the level of path meaning, not be left implicit inside destructive command execution.
+## Testing and Checking
+The Forge model includes:
 
+- satisfiability tests for initialization, well-formed states, and traces
+- precondition tests for each command
+- preservation checks showing that each command maintains well-formedness
+- trace-level tests for valid and invalid command sequences
+- assertions that the root never changes and is always live
+
+These checks let us distinguish behaviors that should be possible, such as `touch` followed by `rm`, from behaviors that should be impossible, such as deleting an object and then moving it later in the same trace.
+
+## Shell-To-Forge Tool
+This project also supports verification and visualization of a narrow class of, but otherwise unmodified, shell programs.
+
+The tool in `scripts/shell_to_forge.py` parses a shell script and emits a small generated Forge harness into `{script_name}.model.frg`.
+It then checks whether the filesystem modification commands in the script can be satisfied by the model.
+
+Setup:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Run:
+
+```sh
+python scripts/shell_to_forge.py examples/demo.sh
+python scripts/shell_to_forge.py examples/wrong.sh --expect unsat
+```
+
+# Design Checks
 
 ## Design Check 1
 > Great choice of topic! Filesystem semantics are a classic source of subtle bugs, and Forge is well-suited for exploring them. What specific surprising behaviors or edge cases are you hoping to surface? Having a concrete example or two in mind early will help focus your modeling.
@@ -159,19 +148,32 @@ We plan to represent liveness with an explicit set of live filesystem objects:
 ```forge
 one sig FS {
   var live: set FsObj,
-  ...
+  var parent: pfunc FsObj -> Dir,
+  var entryName: pfunc FsObj -> Name
 }
 ```
 
 This makes transitions straightforward to express. For example, removal can update liveness by subtracting the removed object:
 
 ```forge
-pred rm[x: FsObj] {
-  ...,
-  live' = live - x,
-  ...
+pred rm[f: File] {
+  isLive[f]
+  FS.live' = FS.live - f
+  FS.parent' = FS.parent - f -> Dir
+  FS.entryName' = FS.entryName - f -> Name
+  unchangedResolution
 }
 ```
+
+## Design Check 2
+
+No major changes in directions.
+Gave updates on the current model, and testing.
+
+## Design Check 3
+
+Individual check-ins. 
+We mostly worked on finalizing the model, visualization, and the shell-to-forge tool.
 
 ## Collaborators
 - Alexander Lee
