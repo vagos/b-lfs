@@ -46,6 +46,10 @@ We have used the model to derive some equivalence analysis for sequences of comm
 - `rm -r a/b/..` is checked as equivalent to `rm -r a`
 - `rm -r a/b/..` is also checked as non-equivalent to `rm -r a/b`
 
+The core filesystem model stays in `file-system.frg`.
+The reach-only predicates live in `file-system-reach.frg`.
+The executable test entrypoint is `file-system.test.frg`, which uses both files.
+
 At all three levels, testing is part of the goal. We are not only checking high-level properties; we are also testing that predicates such as resolution, normalization, and command transitions behave the way we intend on small examples and edge cases.
 
 We have implemented a Sterling visualization configuration in `file-system.cnd`.

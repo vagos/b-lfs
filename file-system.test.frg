@@ -1,6 +1,7 @@
 #lang forge/temporal
 
 open "file-system.frg"
+open "file-system-reach.frg"
 
 -- Foundation-level tests.
 test expect foundationTests {
