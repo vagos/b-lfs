@@ -4,8 +4,6 @@ open "../file-system.frg"
 
 option max_tracelength 8
 
--- Generated from /Users/vagozino/wrk/csci1710/project/examples/demo.sh by scripts/shell_to_forge.py
-
 one sig GeneratedName0 extends Name {}
 one sig GeneratedName1 extends Name {}
 one sig GeneratedName2 extends Name {}

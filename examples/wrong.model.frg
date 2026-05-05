@@ -2,8 +2,6 @@
 
 open "../file-system.frg"
 
--- Generated from /Users/vagozino/wrk/csci1710/project/examples/wrong.sh by scripts/shell_to_forge.py
-
 one sig GeneratedName0 extends Name {}
 
 one sig GeneratedComp0 extends NameComp {}
