@@ -115,6 +115,10 @@ The Forge model includes:
 
 These checks let us distinguish behaviors that should be possible, such as `touch` followed by `rm`, from behaviors that should be impossible, such as deleting an object and then moving it later in the same trace.
 
+## Model Visualization
+
+XXX
+
 ## Shell-To-Forge Tool
 This project also supports verification and visualization of a narrow class of, but otherwise unmodified, shell programs.
 
