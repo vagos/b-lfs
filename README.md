@@ -118,8 +118,12 @@ The Forge model includes:
 These checks let us distinguish behaviors that should be possible, such as `touch` followed by `rm`, from behaviors that should be impossible, such as deleting an object and then moving it later in the same trace.
 
 ## Model Visualization
-
-XXX
+Our visualization shows the state of the filesystem after each command is executed.
+The filesystem is displayed as a tree, with the root directory at the top and children files and directories below.
+Files and directories are further distinguished with their respective icons.
+Filesystem-objects are connected with parent pointers to show their relationships.
+Below is an example state of the filesystem:
+![Filesystem visualization](viz.png)
 
 ## Shell-To-Forge Tool
 This project also supports verification and visualization of a narrow class of, but otherwise unmodified, shell programs.
@@ -143,6 +147,7 @@ python scripts/shell_to_forge.py examples/wrong.sh
 ```
 
 Note: Use the `--viz` flag to also have Sterling run when you run the generated model.
+Adding `--buggy` to a `--viz` invocation swaps each `rm -r` for the model's raw recursive rmr semantics to visualize the bug.
 
 # Design Checks
 
