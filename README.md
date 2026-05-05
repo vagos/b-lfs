@@ -129,8 +129,10 @@ Run:
 
 ```sh
 python scripts/shell_to_forge.py examples/demo.sh
-python scripts/shell_to_forge.py examples/wrong.sh --expect unsat
+python scripts/shell_to_forge.py examples/wrong.sh
 ```
+
+Note: Use the `--viz` flag to also have Sterling run when you run the generated model.
 
 # Design Checks
 
