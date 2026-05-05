@@ -2,13 +2,14 @@
 
 open "../file-system.frg"
 
-option max_tracelength 7
+option max_tracelength 8
 
 -- Generated from /Users/vagozino/wrk/csci1710/project/examples/demo.sh by scripts/shell_to_forge.py
 
 one sig GeneratedName0 extends Name {}
 one sig GeneratedName1 extends Name {}
 one sig GeneratedName2 extends Name {}
+one sig GeneratedName3 extends Name {}
 
 one sig GeneratedComp0 extends NameComp {}
 one sig GeneratedComp1 extends NameComp {}
@@ -40,9 +41,12 @@ pred generatedScript {
         next_state {
             some file2: File | touchPath[Root, GeneratedPath2, GeneratedName2, file2]
             next_state {
-                rmPath[Root, GeneratedPath3]
+                some file3: File | touchPath[Root, GeneratedPath0, GeneratedName3, file3]
                 next_state {
-                    rmrPath[Root, GeneratedPath4]
+                    rmPath[Root, GeneratedPath3]
+                    next_state {
+                        rmrPath[Root, GeneratedPath4]
+                    }
                 }
             }
         }
@@ -51,4 +55,4 @@ pred generatedScript {
 
 run {
     generatedScript
-} for 4 FsObj, 3 Dir, 1 File, 3 Name, 5 Component, 5 Path, 15 PathEval
+} for 5 FsObj, 3 Dir, 2 File, 4 Name, 5 Component, 5 Path, 15 PathEval
