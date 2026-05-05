@@ -10,8 +10,10 @@ To run the model, you just need to:
 1. Install Racket and Forge.
 2. Run `racket examples/demo.model.frg` to see a visualization of a simple trace. The script this model is based on is in `examples/demo.sh`. If the filesystem when walking through states is not visiable, try enabling "Compare Mode" and enabling all states to see the different snapshots.
 
-## Goals
-Our goal is to use modeling to expose edge cases in path-based command semantics.
+## Goals and Outcomes
+Our goal was to use modeling to expose edge cases in path-based command semantics.
+What we got from this project (and the class in general) was an understanding of where the different modeling techniques we learned are related to eachother and how they can be used to model and explore complex systems.
+Modeling something like a filesystem requires several iterations of simplification which showed us that there are still a ton of interesting avenues to explore formal methods in the future and how to apply them to real domains.
 
 ### Foundation
 The basic model is a rooted file-system tree with files, directories, liveness, parent pointers, and command transitions for `touch`, `mkdir`, `rm`, `rmr`, `mv`, and `cp`.
