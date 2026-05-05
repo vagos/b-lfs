@@ -33,14 +33,14 @@ one sig FS {
     var entryName: pfunc FsObj -> Name
 }
 
--- Stores the reference rmr post-state for a raw recursive run.
+// Stores the reference rmr post-state for a raw recursive run.
 one sig RmrSpec {
     var liveAfter: set FsObj,
     var parentAfter: pfunc FsObj -> Dir,
     var entryNameAfter: pfunc FsObj -> Name
 }
 
--- Stores reference post-states for path-sequence equivalence checks.
+// Stores reference post-states for path-sequence equivalence checks.
 one sig PathSeqSpec {
     var seqLiveAfter: set FsObj,
     var seqParentAfter: pfunc FsObj -> Dir,
@@ -69,47 +69,47 @@ pred noChildNamed[d: Dir, n: Name] {
     no obj: FsObj | childNamed[d, n, obj]
 }
 
--- Static constraints for path syntax and evaluator allocation.
+// Static constraints for path syntax and evaluator allocation.
 pred pathModelWellformed {
-    -- Paths are finite sequences: nonnegative, contiguous indices.
+    // Paths are finite sequences: nonnegative, contiguous indices.
     all p: Path, i: Int | {
         some p.segs[i] implies i >= 0
         (some p.segs[i] and i > 0) implies some p.segs[subtract[i, 1]]
     }
 
-    -- PathEval is a derived cache. Scopes must leave enough PathEval atoms
-    -- for one evaluator per possible base-directory/path pair.
+    // PathEval is a derived cache. Scopes must leave enough PathEval atoms
+    // for one evaluator per possible base-directory/path pair.
     all d: Dir, p: Path | one e: PathEval | {
         e.evalBase = d
         e.evalPath = p
     }
 }
 
--- State constraints for a rooted, named filesystem tree.
+// State constraints for a rooted, named filesystem tree.
 pred wellformed {
-    -- Root exists and has no parent/name.
+    // Root exists and has no parent/name.
     Root in FS.live
     no FS.parent[Root]
     no FS.entryName[Root]
 
-    -- Dead objects have no filesystem metadata.
+    // Dead objects have no filesystem metadata.
     all obj: FsObj | obj not in FS.live implies {
         no FS.parent[obj]
         no FS.entryName[obj]
     }
 
-    -- Every live non-root object has a live parent and a name.
+    // Every live non-root object has a live parent and a name.
     all obj: FS.live - Root | {
         one FS.parent[obj]
         one FS.entryName[obj]
         FS.parent[obj] in FS.live
     }
 
-    -- The live parent relation is an acyclic tree rooted at Root.
+    // The live parent relation is an acyclic tree rooted at Root.
     all obj: FS.live | not reachable[obj, obj, FS.parent]
     all obj: FS.live - Root | reachable[Root, obj, FS.parent]
 
-    -- Sibling names are unique: same parent and same name means same object.
+    // Sibling names are unique: same parent and same name means same object.
     all disj x, y: FS.live - Root | {
         FS.parent[x] = FS.parent[y]
         FS.entryName[x] = FS.entryName[y]
@@ -123,8 +123,8 @@ pred init {
 }
 
 pred unchangedResolution {
-    -- Resolution is derived, so command predicates intentionally leave it
-    -- unconstrained; trace-level invariants recompute it in each state.
+    // Resolution is derived, so command predicates intentionally leave it
+    // unconstrained; trace-level invariants recompute it in each state.
     true
 }
 
@@ -159,7 +159,7 @@ pred rm[f: File] {
     unchangedResolution
 }
 
--- Deletes exactly one live non-root object.
+// Deletes exactly one live non-root object.
 pred deleteOne[obj: FsObj] {
     isLive[obj]
     obj != Root
@@ -170,12 +170,12 @@ pred deleteOne[obj: FsObj] {
     unchangedResolution
 }
 
--- True when a directory currently has at least one live child.
+// True when a directory currently has at least one live child.
 pred hasLiveChild[d: Dir] {
     some child: FS.live | FS.parent[child] = d
 }
 
--- A recursive rmr step may delete only a file or an empty directory.
+// A recursive rmr step may delete only a file or an empty directory.
 pred recursiveRmrLeaf[target: Dir, victim: FsObj] {
     victim in subtree[target] - target
     {
@@ -188,7 +188,7 @@ pred recursiveRmrLeaf[target: Dir, victim: FsObj] {
     }
 }
 
--- One nondeterministic recursive rmr step under target.
+// One nondeterministic recursive rmr step under target.
 pred recursiveRmrStep[target: Dir] {
     isLive[target]
     target != Root
@@ -205,7 +205,7 @@ pred recursiveRmrStep[target: Dir] {
     }
 }
 
--- Reference semantics for recursive removal: delete the whole subtree at once.
+// Reference semantics for recursive removal: delete the whole subtree at once.
 pred rmr[d: Dir] {
     isLive[d]
     d != Root
@@ -268,7 +268,7 @@ pred step {
     (some src: File, dest: File, d: Dir, n: Name | cp[src, dest, d, n])
 }
 
--- Resolves one path component from a live directory.
+// Resolves one path component from a live directory.
 pred stepComponent[from: Dir, c: Component, to: FsObj] {
     from in FS.live
     to in FS.live
@@ -287,14 +287,14 @@ pred stepComponent[from: Dir, c: Component, to: FsObj] {
     })
 }
 
--- Constrains the first cached path-resolution step.
+// Constrains the first cached path-resolution step.
 pred firstStep[e: PathEval] {
     all target: FsObj | {
         stepComponent[e.evalBase, e.evalPath.segs[0], target] iff e.walk[0] = target
     }
 }
 
--- Constrains later cached path-resolution steps.
+// Constrains later cached path-resolution steps.
 pred nextStep[e: PathEval, i: Int] {
     let prevIdx = subtract[i, 1] | {
         {
@@ -315,7 +315,7 @@ pred nextStep[e: PathEval, i: Int] {
     }
 }
 
--- Defines resolution for one base/path evaluator in the current state.
+// Defines resolution for one base/path evaluator in the current state.
 pred resolutionFor[e: PathEval] {
     e.evalBase in FS.live implies {
         no e.evalPath.segs implies {
@@ -345,7 +345,7 @@ pred resolutionFor[e: PathEval] {
     }
 }
 
--- Applies path-resolution semantics to every evaluator.
+// Applies path-resolution semantics to every evaluator.
 pred resolutionSemantics {
     all e: PathEval | resolutionFor[e]
 }
@@ -365,7 +365,7 @@ pred trace {
     }
 }
 
--- Convenience predicate for object-valued path resolution.
+// Convenience predicate for object-valued path resolution.
 pred resolvesTo[base: Dir, p: Path, obj: FsObj] {
     some e: PathEval | {
         e.evalBase = base
@@ -374,37 +374,37 @@ pred resolvesTo[base: Dir, p: Path, obj: FsObj] {
     }
 }
 
--- Convenience predicate for directory-valued path resolution.
+// Convenience predicate for directory-valued path resolution.
 pred resolvesToDir[base: Dir, p: Path, d: Dir] {
     resolvesTo[base, p, d]
 }
 
--- True for ordinary name components.
+// True for ordinary name components.
 pred nameComponent[c: Component] {
     some nc: NameComp | c = nc
 }
 
--- A normalized path contains only name components.
+// A normalized path contains only name components.
 pred normalizedPath[p: Path] {
     all i: Int | some p.segs[i] implies nameComponent[p.segs[i]]
 }
 
--- Excludes explicit current-directory components.
+// Excludes explicit current-directory components.
 pred noDot[p: Path] {
     all i: Int | some p.segs[i] implies p.segs[i] != Dot
 }
 
--- Excludes explicit parent-directory components.
+// Excludes explicit parent-directory components.
 pred noDotDot[p: Path] {
     all i: Int | some p.segs[i] implies p.segs[i] != DotDot
 }
 
--- Requires at least one parent-directory component.
+// Requires at least one parent-directory component.
 pred containsDotDot[p: Path] {
     some i: Int | p.segs[i] = DotDot
 }
 
--- Two paths have the same meaning when they resolve to the same object.
+// Two paths have the same meaning when they resolve to the same object.
 pred samePathMeaning[base: Dir, p1, p2: Path] {
     some obj: FsObj | {
         resolvesTo[base, p1, obj]
@@ -412,13 +412,13 @@ pred samePathMeaning[base: Dir, p1, p2: Path] {
     }
 }
 
--- Relates a raw path to a name-only path with the same meaning.
+// Relates a raw path to a name-only path with the same meaning.
 pred normalizesTo[base: Dir, raw, norm: Path] {
     normalizedPath[norm]
     samePathMeaning[base, raw, norm]
 }
 
--- Path-based touch resolves the parent path first.
+// Path-based touch resolves the parent path first.
 pred touchPath[base: Dir, parentPath: Path, n: Name, f: File] {
     some d: Dir | {
         resolvesToDir[base, parentPath, d]
@@ -426,7 +426,7 @@ pred touchPath[base: Dir, parentPath: Path, n: Name, f: File] {
     }
 }
 
--- Path-based mkdir resolves the parent path first.
+// Path-based mkdir resolves the parent path first.
 pred mkdirPath[base: Dir, parentPath: Path, n: Name, d: Dir] {
     some p: Dir | {
         resolvesToDir[base, parentPath, p]
@@ -434,7 +434,7 @@ pred mkdirPath[base: Dir, parentPath: Path, n: Name, d: Dir] {
     }
 }
 
--- Path-based rm resolves the target path first.
+// Path-based rm resolves the target path first.
 pred rmPath[base: Dir, p: Path] {
     some f: File | {
         resolvesTo[base, p, f]
@@ -442,7 +442,7 @@ pred rmPath[base: Dir, p: Path] {
     }
 }
 
--- Path-based rmr resolves once, then applies the reference rmr relation.
+// Path-based rmr resolves once, then applies the reference rmr relation.
 pred rmrPath[base: Dir, p: Path] {
     some d: Dir | {
         resolvesToDir[base, p, d]
@@ -450,41 +450,41 @@ pred rmrPath[base: Dir, p: Path] {
     }
 }
 
--- Correct normalized rmr resolves the normalized path.
+// Correct normalized rmr resolves the normalized path.
 pred rmrNormalizedPath[base: Dir, raw, norm: Path] {
     normalizesTo[base, raw, norm]
     rmrPath[base, norm]
 }
 
--- Records the rmr reference post-state for target.
+// Records the rmr reference post-state for target.
 pred recordRmrSpec[target: Dir] {
     RmrSpec.liveAfter' = FS.live - subtree[target]
     RmrSpec.parentAfter' = FS.parent - subtree[target] -> Dir
     RmrSpec.entryNameAfter' = FS.entryName - subtree[target] -> Name
 }
 
--- Carries the recorded rmr reference post-state across recursive steps.
+// Carries the recorded rmr reference post-state across recursive steps.
 pred keepRmrSpec {
     RmrSpec.liveAfter' = RmrSpec.liveAfter
     RmrSpec.parentAfter' = RmrSpec.parentAfter
     RmrSpec.entryNameAfter' = RmrSpec.entryNameAfter
 }
 
--- True when the current filesystem equals the recorded rmr reference state.
+// True when the current filesystem equals the recorded rmr reference state.
 pred matchesRmrSpec {
     FS.live = RmrSpec.liveAfter
     FS.parent = RmrSpec.parentAfter
     FS.entryName = RmrSpec.entryNameAfter
 }
 
--- Records the current filesystem as a reference state.
+// Records the current filesystem as a reference state.
 pred recordCurrentFsSpec {
     PathSeqSpec.seqLiveAfter' = FS.live
     PathSeqSpec.seqParentAfter' = FS.parent
     PathSeqSpec.seqEntryNameAfter' = FS.entryName
 }
 
--- Records the rm-path post-state from the current filesystem.
+// Records the rm-path post-state from the current filesystem.
 pred recordRmPathSpec[base: Dir, p: Path] {
     some f: File | {
         resolvesTo[base, p, f]
@@ -494,7 +494,7 @@ pred recordRmPathSpec[base: Dir, p: Path] {
     }
 }
 
--- Records the rmr-path post-state from the current filesystem.
+// Records the rmr-path post-state from the current filesystem.
 pred recordRmrPathSpec[base: Dir, p: Path] {
     some d: Dir | {
         resolvesToDir[base, p, d]
@@ -504,21 +504,21 @@ pred recordRmrPathSpec[base: Dir, p: Path] {
     }
 }
 
--- Carries a recorded path-sequence reference state across later steps.
+// Carries a recorded path-sequence reference state across later steps.
 pred keepPathSeqSpec {
     PathSeqSpec.seqLiveAfter' = PathSeqSpec.seqLiveAfter
     PathSeqSpec.seqParentAfter' = PathSeqSpec.seqParentAfter
     PathSeqSpec.seqEntryNameAfter' = PathSeqSpec.seqEntryNameAfter
 }
 
--- True when the current filesystem matches the recorded path-sequence reference state.
+// True when the current filesystem matches the recorded path-sequence reference state.
 pred matchesPathSeqSpec {
     FS.live = PathSeqSpec.seqLiveAfter
     FS.parent = PathSeqSpec.seqParentAfter
     FS.entryName = PathSeqSpec.seqEntryNameAfter
 }
 
--- Starts raw recursive rmr and records the reference rmr result.
+// Starts raw recursive rmr and records the reference rmr result.
 pred startRawRecursiveRmrPath[base: Dir, raw: Path] {
     some target: Dir | {
         resolvesToDir[base, raw, target]
@@ -527,7 +527,7 @@ pred startRawRecursiveRmrPath[base: Dir, raw: Path] {
     }
 }
 
--- Raw recursive rmr re-resolves the path at each recursive step.
+// Raw recursive rmr re-resolves the path at each recursive step.
 pred rawRecursiveRmrPathStep[base: Dir, raw: Path] {
     some target: Dir | {
         resolvesToDir[base, raw, target]
@@ -535,13 +535,13 @@ pred rawRecursiveRmrPathStep[base: Dir, raw: Path] {
     }
 }
 
--- Continues raw recursive rmr while preserving the reference result.
+// Continues raw recursive rmr while preserving the reference result.
 pred continueRawRecursiveRmrPath[base: Dir, raw: Path] {
     rawRecursiveRmrPathStep[base, raw]
     keepRmrSpec
 }
 
--- True when the raw path can still name a non-root directory to remove.
+// True when the raw path can still name a non-root directory to remove.
 pred rawRecursiveRmrCanStep[base: Dir, raw: Path] {
     some target: Dir | {
         resolvesToDir[base, raw, target]
@@ -549,13 +549,13 @@ pred rawRecursiveRmrCanStep[base: Dir, raw: Path] {
     }
 }
 
--- Terminal mismatch: raw recursion cannot step and has not reached rmr spec.
+// Terminal mismatch: raw recursion cannot step and has not reached rmr spec.
 pred rawRecursiveRmrStuckBeforeRmrSpec[base: Dir, raw: Path] {
     not matchesRmrSpec
     not rawRecursiveRmrCanStep[base, raw]
 }
 
--- Full raw recursive run: start once, then repeat re-resolution until terminal.
+// Full raw recursive run: start once, then repeat re-resolution until terminal.
 pred rawRecursiveRmrRun[base: Dir, raw: Path] {
     startRawRecursiveRmrPath[base, raw]
 
@@ -576,7 +576,7 @@ pred rawRecursiveRmrRun[base: Dir, raw: Path] {
     }
 }
 
--- Path-based mv resolves source and destination parent paths first.
+// Path-based mv resolves source and destination parent paths first.
 pred mvPath[base: Dir, srcPath: Path, destParentPath: Path, newName: Name] {
     some obj: FsObj, d: Dir | {
         resolvesTo[base, srcPath, obj]
@@ -585,7 +585,7 @@ pred mvPath[base: Dir, srcPath: Path, destParentPath: Path, newName: Name] {
     }
 }
 
--- Path-based cp resolves source and destination parent paths first.
+// Path-based cp resolves source and destination parent paths first.
 pred cpPath[base: Dir, srcPath: Path, destParentPath: Path, newName: Name, dest: File] {
     some src: File, d: Dir | {
         resolvesTo[base, srcPath, src]
@@ -594,22 +594,22 @@ pred cpPath[base: Dir, srcPath: Path, destParentPath: Path, newName: Name, dest:
     }
 }
 
--- Helper for a one-component path.
+// Helper for a one-component path.
 pred pathIs1[p: Path, c0: Component] {
     p.segs = 0 -> c0
 }
 
--- Helper for a two-component path.
+// Helper for a two-component path.
 pred pathIs2[p: Path, c0, c1: Component] {
     p.segs = (0 -> c0) + (1 -> c1)
 }
 
--- Helper for a three-component path.
+// Helper for a three-component path.
 pred pathIs3[p: Path, c0, c1, c2: Component] {
     p.segs = (0 -> c0) + (1 -> c1) + (2 -> c2)
 }
 
--- Helper for the empty path.
+// Helper for the empty path.
 pred emptyPath[p: Path] {
     no p.segs
 }
@@ -627,7 +627,7 @@ pred rootAlwaysLive {
     trace implies always { Root in FS.live }
 }
 
--- Checks that .. at root resolves back to root.
+// Checks that .. at root resolves back to root.
 pred dotdotAtRootStaysAtRoot {
     trace
     some p: Path | {
@@ -636,7 +636,7 @@ pred dotdotAtRootStaysAtRoot {
     }
 }
 
--- Checks that a/b/.. resolves to a.
+// Checks that a/b/.. resolves to a.
 pred dotdotReturnsParent {
     trace
     some aName, bName: Name, aComp, bComp: NameComp, p: Path, dA, dB: Dir | {
@@ -654,7 +654,7 @@ pred dotdotReturnsParent {
     }
 }
 
--- Shows that a/b/.. and a have the same path meaning.
+// Shows that a/b/.. and a have the same path meaning.
 pred dotdotPathNormalizesToParentName {
     trace
     some aName, bName: Name, aComp, bComp: NameComp, raw, norm: Path, dA, dB: Dir | {
@@ -676,7 +676,7 @@ pred dotdotPathNormalizesToParentName {
     }
 }
 
--- Shows that normalized rmr deletes the intended parent subtree.
+// Shows that normalized rmr deletes the intended parent subtree.
 pred normalizedDotDotRmrDeletesParentDirectory {
     trace
     some aName, bName: Name, aComp, bComp: NameComp, raw, norm: Path, dA, dB: Dir | {
@@ -700,7 +700,7 @@ pred normalizedDotDotRmrDeletesParentDirectory {
     }
 }
 
--- Property: normalization preserves object-level resolution.
+// Property: normalization preserves object-level resolution.
 pred normalizationPreservesResolution {
     trace implies always {
         all base: Dir, raw, norm: Path | {
@@ -709,13 +709,13 @@ pred normalizationPreservesResolution {
     }
 }
 
--- A full raw recursive rmr run can stop before reaching rmr spec.
+// A full raw recursive rmr run can stop before reaching rmr spec.
 pred rawRecursiveRmrViolatesRmrSpecForPath[p: Path] {
     rawRecursiveRmrRun[Root, p]
     eventually rawRecursiveRmrStuckBeforeRmrSpec[Root, p]
 }
 
--- Discover any raw-path recursive-rmr violation of rmr spec.
+// Discover any raw-path recursive-rmr violation of rmr spec.
 pred rawRecursiveRmrViolatesRmrSpec {
     trace
     eventually {
@@ -723,7 +723,7 @@ pred rawRecursiveRmrViolatesRmrSpec {
     }
 }
 
--- Discover an rmr-spec violation while disallowing explicit . components.
+// Discover an rmr-spec violation while disallowing explicit . components.
 pred noDotRawRecursiveRmrViolatesRmrSpec {
     trace
     eventually {
@@ -734,7 +734,7 @@ pred noDotRawRecursiveRmrViolatesRmrSpec {
     }
 }
 
--- Discover an rmr-spec violation while disallowing explicit .. components.
+// Discover an rmr-spec violation while disallowing explicit .. components.
 pred noDotDotRawRecursiveRmrViolatesRmrSpec {
     trace
     eventually {
@@ -745,7 +745,7 @@ pred noDotDotRawRecursiveRmrViolatesRmrSpec {
     }
 }
 
--- Discover an rmr-spec violation for pure name-only paths.
+// Discover an rmr-spec violation for pure name-only paths.
 pred linearRawRecursiveRmrViolatesRmrSpec {
     trace
     eventually {
@@ -757,7 +757,7 @@ pred linearRawRecursiveRmrViolatesRmrSpec {
     }
 }
 
--- A plain path can complete the full recursive run and match rmr spec.
+// A plain path can complete the full recursive run and match rmr spec.
 pred linearRawRecursiveRmrCanMatchRmrSpec {
     trace
     eventually {
@@ -770,7 +770,7 @@ pred linearRawRecursiveRmrCanMatchRmrSpec {
     }
 }
 
--- Reach goal: touching a fresh path and then removing it is a no-op.
+// Reach goal: touching a fresh path and then removing it is a no-op.
 pred touchThenRmPathIsNoOp {
     trace
     some n: Name, c: NameComp, parentPath, targetPath: Path, f: File | {
@@ -790,7 +790,7 @@ pred touchThenRmPathIsNoOp {
     }
 }
 
--- Reach goal: mv src dst; rm dst matches direct rm src.
+// Reach goal: mv src dst; rm dst matches direct rm src.
 pred moveThenRemoveMatchesDirectRemove {
     trace
     some srcName, destName: Name, srcComp, destComp: NameComp,
@@ -817,7 +817,7 @@ pred moveThenRemoveMatchesDirectRemove {
     }
 }
 
--- Reach goal: rm -r a/b/.. is equivalent to rm -r a.
+// Reach goal: rm -r a/b/.. is equivalent to rm -r a.
 pred dotdotRmrMatchesParentRmr {
     trace
     some aName, bName: Name, aComp, bComp: NameComp, raw, parent: Path, dA, dB: Dir | {
@@ -841,7 +841,7 @@ pred dotdotRmrMatchesParentRmr {
     }
 }
 
--- Reach goal: rm -r a/b/.. is not equivalent to rm -r a/b.
+// Reach goal: rm -r a/b/.. is not equivalent to rm -r a/b.
 pred dotdotRmrDiffersFromChildRmr {
     trace
     some aName, bName: Name, aComp, bComp: NameComp, raw, child: Path, dA, dB: Dir | {
