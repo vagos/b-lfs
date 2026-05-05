@@ -123,7 +123,7 @@ The filesystem is displayed as a tree, with the root directory at the top and ch
 Files and directories are further distinguished with their respective icons.
 Filesystem-objects are connected with parent pointers to show their relationships.
 Below is an example state of the filesystem:
-![Filesystem visualization](visualization-example.png)
+![Filesystem visualization](assets/visualization-example.png)
 
 ## Shell-To-Forge Tool
 This project also supports verification and visualization of a narrow class of, but otherwise unmodified, shell programs.
