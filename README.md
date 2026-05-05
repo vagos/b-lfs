@@ -119,7 +119,7 @@ These checks let us distinguish behaviors that should be possible, such as `touc
 
 ## Model Visualization
 Our visualization shows the state of the filesystem after each command is executed.
-The filesystem is displayed as a tree, with the root directory at the top and children files and directories below.
+The filesystem is displayed as a tree of all the live filesystem-objects, with the root directory at the top and children files and directories below.
 Files and directories are further distinguished with their respective icons.
 Filesystem-objects are connected with parent pointers to show their relationships.
 Below is an example state of the filesystem:
