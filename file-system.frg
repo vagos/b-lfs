@@ -33,13 +33,6 @@ one sig FS {
     var entryName: pfunc FsObj -> Name
 }
 
-// Stores the reference rmr post-state for a raw recursive run.
-one sig RmrSpec {
-    var liveAfter: set FsObj,
-    var parentAfter: pfunc FsObj -> Dir,
-    var entryNameAfter: pfunc FsObj -> Name
-}
-
 pred isLive[obj: FsObj] {
     obj in FS.live
 }
@@ -447,6 +440,13 @@ pred rmrPath[base: Dir, p: Path] {
 pred rmrNormalizedPath[base: Dir, raw, norm: Path] {
     normalizesTo[base, raw, norm]
     rmrPath[base, norm]
+}
+
+// Stores the reference rmr post-state for a raw recursive run.
+one sig RmrSpec {
+    var liveAfter: set FsObj,
+    var parentAfter: pfunc FsObj -> Dir,
+    var entryNameAfter: pfunc FsObj -> Name
 }
 
 // Records the rmr reference post-state for target.
