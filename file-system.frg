@@ -20,13 +20,6 @@ sig Path {
     segs: pfunc Int -> Component
 }
 
-sig PathEval {
-    evalBase: one Dir,
-    evalPath: one Path,
-    var walk: pfunc Int -> FsObj,
-    var resolved: lone FsObj
-}
-
 one sig FS {
     var live: set FsObj,
     var parent: pfunc FsObj -> Dir,
@@ -53,6 +46,14 @@ fun subtree[d: Dir]: set FsObj {
 
 pred noChildNamed[d: Dir, n: Name] {
     no obj: FsObj | childNamed[d, n, obj]
+}
+
+
+sig PathEval {
+    evalBase: one Dir,
+    evalPath: one Path,
+    var walk: pfunc Int -> FsObj,
+    var resolved: lone FsObj
 }
 
 // Static constraints for path syntax and evaluator allocation.
