@@ -107,6 +107,6 @@ linearRawRecursiveRmrMatchesSpecAssertion:
     for 4 FsObj, 3 Dir, 1 File, 2 Name, 4 Component, 1 Path, 3 PathEval
 
 -- Expected witness: a raw-path recursive-rmr violating trace.
-rawRecursiveRmrMatchesSpecAssertion:
+rawRecursiveRmrViolatesSpecAssertion:
     assert rawRecursiveRmrViolatesRmrSpec is sat
     for 5 FsObj, 3 Dir, 2 File, 3 Name, 5 Component, 2 Path, 6 PathEval
