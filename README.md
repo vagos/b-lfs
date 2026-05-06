@@ -100,11 +100,12 @@ Instead of resolving commands directly against objects, commands will take paths
 - `Dot` keeps the current object unchanged
 - `DotDot` moves to the parent, except that root stays at root
 
-The main motivating edge case is:
+One motivating case is:
 
 `rmr a/b/..`
 
 After normalization, this path should behave like `rmr a/.`, so both should delete the same directory. If recursive removal is instead modeled by walking the raw path while mutation is already in progress, deleting `b` too early can make `a/b/..` stop resolving. That would incorrectly prevent the command from removing everything in `a`.
+Our model is able to identify bugs both in the way how commands are composed but also in how they are internally implemented.
 
 ## Testing and Checking
 The Forge model includes:
