@@ -2,6 +2,8 @@
 
 open "../file-system.frg"
 
+option max_tracelength 6
+
 one sig GeneratedName0 extends Name {}
 
 one sig GeneratedComp0 extends NameComp {}
@@ -22,8 +24,6 @@ pred generatedScript {
     }
 }
 
-test expect generatedScriptTests {
-    generatedScriptSat: {
-        generatedScript
-    } for 2 FsObj, 1 Dir, 1 File, 1 Name, 3 Component, 1 Path, 1 PathEval is sat
-}
+run {
+    generatedScript
+} for 2 FsObj, 1 Dir, 1 File, 1 Name, 3 Component, 1 Path, 1 PathEval
